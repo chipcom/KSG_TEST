@@ -38,10 +38,10 @@ procedure main( ... )
   // R_Use('d:\_mo\chip\exe\_mo3k006', , 'K006')
 
   mainDiag := 'i83.9'  // 'n82.9'
-  fedUslugi := {'A16.12.006.001'} // {'A06.04.018'}
+  fedUslugi := {'A16.12.006.001', 'A16.12.008.003'} // {'A06.04.018'}
   aDiagAdd := {}
   aDiagOsl := {}
-  aAdCrit := {}
+  aAdCrit := {'derm1', 'lgh3'}
   cFr := ''
 
   defenitionKSG( ctod('01/08/2023'), 2, , , USL_OK_HOSPITAL, mainDiag, aDiagAdd, aDiagOsl, fedUslugi, aAdCrit, cFr )

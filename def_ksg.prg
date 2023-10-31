@@ -17,7 +17,7 @@ function defenitionKSG(DOB, gender, dBegSl, dEndSl, uslOK, mDiag, aDiagAdd, aDia
   local aRet := {}
   local aliasK006 := 'K006'
   local cUslOk, vid_age, cGender, cDiag, iScan, durationSl
-  local tmpSelect, lOpenK006 := .f., nfile, sp6 := space(6)
+  local tmpSelect, lOpenK006 := .f., nfile, sp6 := space(6), cFedUsluga, cAdCrit
   local i := 0
 
   default DOB to date()
@@ -35,6 +35,10 @@ function defenitionKSG(DOB, gender, dBegSl, dEndSl, uslOK, mDiag, aDiagAdd, aDia
   if isnil(aFedUsluga)
     aFedUsluga := {}
   endif
+  if isnil(aAdCrit)
+    aAdCrit := {}
+  endif
+
   vid_age := vidAge(DOB, dBegSl, dEndSl)
   cUslOk := iif(uslOK == USL_OK_HOSPITAL, 'st', 'ds')
   cGender := iif(gender == 1, '1', '2')
@@ -44,7 +48,6 @@ function defenitionKSG(DOB, gender, dBegSl, dEndSl, uslOK, mDiag, aDiagAdd, aDia
     durationSl := 1
   endif
 
-altd()
   tmpSelect := select()
   lOpenK006 := (select(aliasK006) != 0)
   nfile := prefixFileRefName(dEndSl) + 'k006'
@@ -53,32 +56,18 @@ altd()
     R_Use(DICT_DIR + nfile, {WORK_DIR + nfile, WORK_DIR + nfile + '_', WORK_DIR + nfile + 'AD'}, 'K006')
   endif
 
-  // (aliasK006)->(dbGoTop())
-  // do while !(aliasK006)->(Eof())
+altd()
   (aliasK006)->(dbSelectArea())
   set order to 1
-  // find (cUslOk + padr(mDiag, 6))
+  (aliasK006)->(dbGoTop())
   (aliasK006)->(dbSeek(cUslOk + mDiag))
-  do while ! eof() .and. left((aliasK006)->SHIFR, 2) == cUslOk .and. k006->DS == mDiag
-  // (aliasK006)->(dbSeek(cUslOk + space(6)))
-  // do while left((aliasK006)->SHIFR, 2) == cUslOk .and. k006->DS == space(6) .and. !eof()
-  // (aliasK006)->(dbSeek(cUslOk))
-  // do while left((aliasK006)->SHIFR, 2) == cUslOk .and. !eof()
-  // (aliasK006)->(dbSeek(cUslOk))
-  // do while ! eof() .and. left((aliasK006)->SHIFR, 2) == cUslOk //.and. ((aliasK006)->DS == mDiag) ;
-    // .and. between_date((aliasK006)->DATEBEG, (aliasK006)->DATEEND, dEndSl)
-  // do while left((aliasK006)->SHIFR, 2) == cUslOk .and. ((aliasK006)->DS == mDiag .or. empty((aliasK006)->DS)) ;
-  //     .and. between_date((aliasK006)->DATEBEG, (aliasK006)->DATEEND, dEndSl) .and. !eof()
+  do while ! eof() .and. left((aliasK006)->SHIFR, 2) == cUslOk .and. (aliasK006)->DS == mDiag
 
-    // if ! between_date((aliasK006)->DATEBEG, (aliasK006)->DATEEND, dEndSl) // услуга доступна по дате
-    //   (aliasK006)->(dbSkip())
-    //   loop
-    // endif
+    if ! between_date((aliasK006)->DATEBEG, (aliasK006)->DATEEND, dEndSl) // услуга доступна по дате
+      (aliasK006)->(dbSkip())
+      loop
+    endif
 
-    // if substr((aliasK006)->shifr, 1, 2) != cUslOk // отбираем по условию оказания мед. помощи
-    //   (aliasK006)->(dbSkip())
-    //   loop
-    // endif
     if !empty((aliasK006)->AGE) .and. ((aliasK006)->AGE != vid_age)     // выборка по группе возраста
       (aliasK006)->(dbSkip())
       loop
@@ -87,52 +76,78 @@ altd()
       (aliasK006)->(dbSkip())
       loop
     endif
-    // if !empty((aliasK006)->DS) .and. ((aliasK006)->DS != mDiag) .and. ((aliasK006)->DS != cDiag)  // выборка по основному диагнозу
-    //   (aliasK006)->(dbSkip())
-    //   loop
-    // endif
-    // добавить фильтр по доп. диагнозам и диагнозам осложнений
-    //
-    //
 
-    // if !empty((aliasK006)->SY) .and. empty((aliasK006)->DS) .and. (iScan := ascan(aFedUsluga, alltrim((aliasK006)->SY)) == 0)     // выборка по группе федеральным услугам
-    //   (aliasK006)->(dbSkip())
-    //   loop
-    // endif
-
-    // if !empty((aliasK006)->AD_CR) .and. (iScan := ascan(aAdCrit, alltrim((aliasK006)->AD_CR)) == 0)     // выборка по группе дополнительных критериев
-    //   (aliasK006)->(dbSkip())
-    //   loop
-    // endif
-    // if !empty((aliasK006)->AD_CR1) .and. (alltrim((aliasK006)->AD_CR1) != cFr)     // выборка по количеству фракций
-    //   (aliasK006)->(dbSkip())
-    //   loop
-    // endif
-    // if !empty((aliasK006)->LOS) .and. (val((aliasK006)->LOS) != 1) .and. (val((aliasK006)->LOS) != durationSl)     // выборка по длительности случая
-    //   (aliasK006)->(dbSkip())
-    //   loop
-    // endif
-
-    aadd(aRet, {(aliasK006)->SHIFR, ; //  1
-                0, ;                  //  2
-                (aliasK006)->KZ, ;              //  3
-                '', ;             // &lal.->kiros, ;       //  4
-                (aliasK006)->DS, ;  // mDiag, ;              //  5
-                (aliasK006)->SY, ;    //  6
-                (aliasK006)->AGE, ;   //  7
-                (aliasK006)->SEX, ;   //  8
-                (aliasK006)->LOS, ;   //  9
-                alltrim((aliasK006)->AD_CR), ; // 10
-                alltrim((aliasK006)->DS1), ;   // 11
-                alltrim((aliasK006)->DS2), ;   // 12
-                0, ;                // j, ;                  // 13
-                '', ;              // &lal.->kslps, ;       // 14
-                alltrim((aliasK006)->AD_CR1) ;  // 15
-                })
-
-    ++i
+    aRet := add_arrKSG(aliasK006, aRet)
     (aliasK006)->(dbSkip())
   enddo
+
+altd()
+  if len(aFedUsluga) > 0
+    for i := 1 to len(aFedUsluga)
+      cFedUsluga := upper(padr(aFedUsluga[i], 20))
+      set order to 2
+      (aliasK006)->(dbGoTop())
+      (aliasK006)->(dbSeek(cUslOk + cFedUsluga))
+      do while ! eof() .and. left((aliasK006)->SHIFR, 2) == cUslOk .and. (aliasK006)->SY == cFedUsluga
+
+        if ! between_date((aliasK006)->DATEBEG, (aliasK006)->DATEEND, dEndSl) // услуга доступна по дате
+          (aliasK006)->(dbSkip())
+          loop
+        endif
+
+        if !empty((aliasK006)->AGE) .and. ((aliasK006)->AGE != vid_age)     // выборка по группе возраста
+          (aliasK006)->(dbSkip())
+          loop
+        endif
+        if !empty((aliasK006)->SEX) .and. ((aliasK006)->SEX != cGender)     // выборка по полу
+          (aliasK006)->(dbSkip())
+          loop
+        endif
+
+        aRet := add_arrKSG(aliasK006, aRet)
+        (aliasK006)->(dbSkip())
+      enddo
+    next
+  endif
+
+altd()
+  if len(aAdCrit) > 0
+    for i := 1 to len(aAdCrit)
+      cAdCrit := lower(padr(aAdCrit[i], 20))
+      set order to 3
+      (aliasK006)->(dbGoTop())
+      (aliasK006)->(dbSeek(cAdCrit))
+      do while ! eof() .and. (aliasK006)->AD_CR == cAdCrit
+
+        if left((aliasK006)->SHIFR, 2) != cUslOk
+          (aliasK006)->(dbSkip())
+          loop
+        endif
+
+        if ! between_date((aliasK006)->DATEBEG, (aliasK006)->DATEEND, dEndSl) // услуга доступна по дате
+          (aliasK006)->(dbSkip())
+          loop
+        endif
+
+        if !empty((aliasK006)->AGE) .and. ((aliasK006)->AGE != vid_age)     // выборка по группе возраста
+          (aliasK006)->(dbSkip())
+          loop
+        endif
+
+        if !empty((aliasK006)->SEX) .and. ((aliasK006)->SEX != cGender)     // выборка по полу
+          (aliasK006)->(dbSkip())
+          loop
+        endif
+
+        // if !empty((aliasK006)->AD_CR1) .and. (alltrim((aliasK006)->AD_CR1) != cFr)     // выборка по количеству фракций
+        //   (aliasK006)->(dbSkip())
+        //   loop
+        // endif
+        aRet := add_arrKSG(aliasK006, aRet)
+        (aliasK006)->(dbSkip())
+      enddo
+    next
+  endif
 
   // hb_Alert('Defention KSG function')
 
@@ -143,6 +158,29 @@ altd()
   select(tmpSelect)
 
   return aRet
+
+function add_arrKSG(cAlias, arr)
+
+  if ! (cAlias)->(Eof()) .and. ! (cAlias)->(Bof())
+    aadd(arr, {(cAlias)->SHIFR, ; //  1
+        0, ;                  //  2
+        (cAlias)->KZ, ;              //  3
+        '', ;             // &lal.->kiros, ;       //  4
+        (cAlias)->DS, ;  // mDiag, ;              //  5
+        (cAlias)->SY, ;    //  6
+        (cAlias)->AGE, ;   //  7
+        (cAlias)->SEX, ;   //  8
+        (cAlias)->LOS, ;   //  9
+        alltrim((cAlias)->AD_CR), ; // 10
+        alltrim((cAlias)->DS1), ;   // 11
+        alltrim((cAlias)->DS2), ;   // 12
+        0, ;                // j, ;                  // 13
+        '', ;              // &lal.->kslps, ;       // 14
+        alltrim((cAlias)->AD_CR1) ;  // 15
+    })
+  endif
+
+  return arr
 
 function vidAge(DOB, dBegSl, dEndSl)
   local ldni, y, m, d, s
@@ -174,33 +212,4 @@ function vidAge(DOB, dBegSl, dEndSl)
     vid := '6'
     s := 'взр.'
   endif
-
-  // if lvr == 0 //
-  //   lage := '6'
-  //   s := 'взр.'
-  // else
-  //   lage := '5'
-  //   s := 'дети'
-  //   fl := .t.
-  //   if ldni <= 28
-  //     lage += '1' // дети до 28 дней
-  //     s := '0-28дн.'
-  //     fl := .f.
-  //   elseif ldni <= 90
-  //     lage += '2' // дети до 90 дней
-  //     s := '29-90дн.'
-  //     fl := .f.
-  //   elseif y < 1 // до 1 года
-  //     lage += '3' // дети от 91 дня до 1 года
-  //     s := '91день-1год'
-  //     fl := .f.
-  //   endif
-  //   if y <= 2 // до 2 лет включительно
-  //     lage += '4' // дети до 2 лет
-  //     if fl
-  //       s := 'до2лет включ.'
-  //     endif
-  //   endif
-  // endif
-
   return vid
