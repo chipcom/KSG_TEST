@@ -2,4 +2,6 @@
 .\test_ksg.prg
 .\def_ksg.prg
 .\funcFromProg.prg
+.\setPriceTableKSG.prg
+.\new_func.prg
 ..\2.x\system\Errorsys.prg

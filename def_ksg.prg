@@ -1,8 +1,9 @@
 #include 'common.ch'
 #include 'chip_mo.ch'
+#include 'tableKSG.ch'
 #include 'ksg_test.ch'
 
-function defenitionKSG(DOB, gender, dBegSl, dEndSl, uslOK, mDiag, aDiagAdd, aDiagOsl, aFedUsluga, aAdCrit, cFr)
+function createTableKSG(DOB, gender, dBegSl, dEndSl, uslOK, mDiag, aDiagAdd, aDiagOsl, aFedUsluga, aAdCrit, cFr)
   // DOB - ¤ â  à®¦¤¥­¨ï ¯ æ¨¥­â 
   // gender - ¯®« ¯ æ¨¥­â  (1-¬ã¦áª®©, 2-¦¥­áª¨©)
   // dBegSl - ¤ â  ­ ç «  á«ãç ï
@@ -18,6 +19,7 @@ function defenitionKSG(DOB, gender, dBegSl, dEndSl, uslOK, mDiag, aDiagAdd, aDia
   local aliasK006 := 'K006'
   local cUslOk, vid_age, cGender, cDiag, iScan, durationSl
   local tmpSelect, lOpenK006 := .f., nfile, sp6 := space(6), cFedUsluga, cAdCrit
+  local lEmptyAdCrit := .t., lEmptyFedUsluga := .t.
   local i := 0
 
   default DOB to date()
@@ -25,6 +27,20 @@ function defenitionKSG(DOB, gender, dBegSl, dEndSl, uslOK, mDiag, aDiagAdd, aDia
   default dBegSl to date()
   default dEndSl to date()
   default uslOK to USL_OK_HOSPITAL  // ªàã£«®áãâ®ç­ë© áâ æ¨®­ à
+  default cFr to ''
+
+  tmpSelect := select()
+  lOpenK006 := (select(aliasK006) != 0)
+  nfile := prefixFileRefName(dEndSl) + 'k006'
+
+  if ! lOpenK006  // ¯à®¢¥à¨¬ çâ® ®¡« áâì K006 ã¦¥ ®âªàëâ 
+    if hb_vfExists(exe_dir + nfile + sdbf) .and. hb_vfExists(exe_dir + nfile + sdbt)
+      R_Use(exe_dir + nfile, {cur_dir + nfile, cur_dir + nfile + '_', cur_dir + nfile + 'AD', cur_dir + nfile + 'AD1'}, 'K006')
+    else
+      func_error(4, 'âáãâáâ¢ã¥â ä ©« ' + exe_dir + nfile + sdbf)
+      return aRet
+    endif
+  endif
 
   if isnil(aDiagAdd)
     aDiagAdd := {}
@@ -44,24 +60,24 @@ function defenitionKSG(DOB, gender, dBegSl, dEndSl, uslOK, mDiag, aDiagAdd, aDia
   cGender := iif(gender == 1, '1', '2')
   mDiag := padr(upper(mDiag), 6)
   cDiag := substr(mDiag, 1, 3)
+  lEmptyFedUsluga := empty(aFedUsluga)
+  lEmptyAdCrit := empty(aAdCrit)
   if (durationSl := dEndSl - dBegSl) == 0
     durationSl := 1
   endif
 
-  tmpSelect := select()
-  lOpenK006 := (select(aliasK006) != 0)
-  nfile := prefixFileRefName(dEndSl) + 'k006'
-  if ! lOpenK006  // ¯à®¢¥à¨¬ çâ® ®¡« áâì K006 ã¦¥ ®âªàëâ 
-    // R_Use(exe_dir + nfile, {cur_dir + nfile, cur_dir + nfile + '_', cur_dir + nfile + 'AD'}, 'K006')
-    R_Use(DICT_DIR + nfile, {WORK_DIR + nfile, WORK_DIR + nfile + '_', WORK_DIR + nfile + 'AD'}, 'K006')
-  endif
-
-altd()
   (aliasK006)->(dbSelectArea())
-  set order to 1
+  // set order to 1
+  (aliasK006)->(ordSetFocus(1))
   (aliasK006)->(dbGoTop())
   (aliasK006)->(dbSeek(cUslOk + mDiag))
+
   do while ! eof() .and. left((aliasK006)->SHIFR, 2) == cUslOk .and. (aliasK006)->DS == mDiag
+
+    if  ! (lEmptyAdCrit .and. lEmptyFedUsluga .and. empty(mDiag)) // ¥á«¨ ¯à¨áãâáâ¢ã¥â á¯¨áª®ª ¤®¯. ªà¨â¥à¨¥¢ ¨«¨ ä¥¤¥à «ì­ëå ãá«ã£ ¤¨ £­®§ ¤®«¦¥­ ¡ëâì
+      (aliasK006)->(dbSkip())
+      loop
+    endif
 
     if ! between_date((aliasK006)->DATEBEG, (aliasK006)->DATEEND, dEndSl) // ãá«ã£  ¤®áâã¯­  ¯® ¤ â¥
       (aliasK006)->(dbSkip())
@@ -81,11 +97,11 @@ altd()
     (aliasK006)->(dbSkip())
   enddo
 
-altd()
   if len(aFedUsluga) > 0
+    // set order to 2
+    (aliasK006)->(ordSetFocus(2))
     for i := 1 to len(aFedUsluga)
       cFedUsluga := upper(padr(aFedUsluga[i], 20))
-      set order to 2
       (aliasK006)->(dbGoTop())
       (aliasK006)->(dbSeek(cUslOk + cFedUsluga))
       do while ! eof() .and. left((aliasK006)->SHIFR, 2) == cUslOk .and. (aliasK006)->SY == cFedUsluga
@@ -110,11 +126,11 @@ altd()
     next
   endif
 
-altd()
   if len(aAdCrit) > 0
+    // set order to 3
+    (aliasK006)->(ordSetFocus(3))
     for i := 1 to len(aAdCrit)
       cAdCrit := lower(padr(aAdCrit[i], 20))
-      set order to 3
       (aliasK006)->(dbGoTop())
       (aliasK006)->(dbSeek(cAdCrit))
       do while ! eof() .and. (aliasK006)->AD_CR == cAdCrit
@@ -139,19 +155,42 @@ altd()
           loop
         endif
 
-        // if !empty((aliasK006)->AD_CR1) .and. (alltrim((aliasK006)->AD_CR1) != cFr)     // ¢ë¡®àª  ¯® ª®«¨ç¥áâ¢ã äà ªæ¨©
-        //   (aliasK006)->(dbSkip())
-        //   loop
-        // endif
         aRet := add_arrKSG(aliasK006, aRet)
         (aliasK006)->(dbSkip())
       enddo
     next
   endif
 
-  // hb_Alert('Defention KSG function')
+  if ! empty(cFr)
+    (aliasK006)->(ordSetFocus(4))
+    cFr := lower(padr(cFr, 20))
+    (aliasK006)->(dbGoTop())
+    (aliasK006)->(dbSeek(cFr))
+    do while ! eof() .and. (aliasK006)->AD_CR1 == cFr
+      if !empty((aliasK006)->AD_CR1) .and. (alltrim((aliasK006)->AD_CR1) != cFr)     // ¢ë¡®àª  ¯® ª®«¨ç¥áâ¢ã äà ªæ¨©
+        (aliasK006)->(dbSkip())
+        loop
+      endif
+      if ! between_date((aliasK006)->DATEBEG, (aliasK006)->DATEEND, dEndSl) // ãá«ã£  ¤®áâã¯­  ¯® ¤ â¥
+        (aliasK006)->(dbSkip())
+        loop
+      endif
 
-altd()
+      if !empty((aliasK006)->AGE) .and. ((aliasK006)->AGE != vid_age)     // ¢ë¡®àª  ¯® £àã¯¯¥ ¢®§à áâ 
+        (aliasK006)->(dbSkip())
+        loop
+      endif
+
+      if !empty((aliasK006)->SEX) .and. ((aliasK006)->SEX != cGender)     // ¢ë¡®àª  ¯® ¯®«ã
+        (aliasK006)->(dbSkip())
+        loop
+      endif
+
+      aRet := add_arrKSG(aliasK006, aRet)
+      (aliasK006)->(dbSkip())
+    enddo
+  endif
+
   if ! lOpenK006  // § ªàë¢ ¥¬ ¥á«¨ ®âªàë¢ «¨ ¢­ãâà¨ äã­ªæ¨¨
     (aliasK006)->(dbCloseArea())
   endif
@@ -162,21 +201,20 @@ altd()
 function add_arrKSG(cAlias, arr)
 
   if ! (cAlias)->(Eof()) .and. ! (cAlias)->(Bof())
-    aadd(arr, {(cAlias)->SHIFR, ; //  1
-        0, ;                  //  2
-        (cAlias)->KZ, ;              //  3
-        '', ;             // &lal.->kiros, ;       //  4
-        (cAlias)->DS, ;  // mDiag, ;              //  5
-        (cAlias)->SY, ;    //  6
-        (cAlias)->AGE, ;   //  7
-        (cAlias)->SEX, ;   //  8
-        (cAlias)->LOS, ;   //  9
-        alltrim((cAlias)->AD_CR), ; // 10
-        alltrim((cAlias)->DS1), ;   // 11
-        alltrim((cAlias)->DS2), ;   // 12
-        0, ;                // j, ;                  // 13
-        '', ;              // &lal.->kslps, ;       // 14
-        alltrim((cAlias)->AD_CR1) ;  // 15
+    aadd(arr, { ;
+        (cAlias)->DS, ; //  1 - ª®¤ ¯® ŒŠ (®á­®¢­®© ¤¨ £­®§)
+        (cAlias)->DS1, ; //  2 - ª®¤ ¯® ŒŠ ()
+        (cAlias)->DS2, ; //  3 - ª®¤ ¯® ŒŠ ()
+        (cAlias)->SY, ;    //  4 - ª®¤ ãá«ã£¨ ””Œ‘ (­®¬¥­ª« âãà  ¬¨­§¤à ¢ )
+        (cAlias)->AGE, ;   //  5 - ¢®§à áâ
+        (cAlias)->SEX, ;   //  6 - ¯®«
+        (cAlias)->LOS, ;   //  7 - ¤«¨â¥«ì­®áâì
+        alltrim((cAlias)->AD_CR), ; // 8 - ¨­®© ª« áá¨ä¨ª æ¨®­­ë© ªà¨â¥à¨©
+        alltrim((cAlias)->AD_CR1), ;  // 9 - ¤¨ ¯ §®­ äà æ¨©
+        (cAlias)->SHIFR, ; //  10 - Š‘ƒ
+        (cAlias)->KZ, ;              //  11 - ª®íä¨æ¨¥­â § âà â®¥¬ª®áâ¨
+        0, ;                  //  12 - ¯à¨®à¨â¥â
+        0 ;                  //  13 - áâ®¨¬®áâì § ª®­ç¥­­®£® á«ãç ï
     })
   endif
 
@@ -205,9 +243,9 @@ function vidAge(DOB, dBegSl, dEndSl)
       vid := '4' // ¤¥â¨ ¤® 2 «¥â
       s := '¤®2«¥â ¢ª«îç.'
     endif 
-  elseif (y >= 18) .and. (y < 21)
-    vid := '7'
-    s := '¤®21£.'
+  // elseif (y >= 18) .and. (y < 21)
+  //   vid := '7'
+  //   s := '¤®21£.'
   else
     vid := '6'
     s := '¢§à.'

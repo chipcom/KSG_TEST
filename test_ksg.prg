@@ -1,9 +1,12 @@
 #include 'common.ch'
 #include 'chip_mo.ch'
+#include 'tableKSG.ch'
+#include 'ksg_test.ch'
 
 procedure main( ... )
 
   local fedUslugi, mainDiag, aDiagAdd, aDiagOsl, aAdCrit, cFr
+  local aKSG  // α―¨αÿª ‘ƒ
 
   REQUEST HB_CODEPAGE_RU866
   HB_CDPSELECT('RU866')
@@ -30,22 +33,25 @@ procedure main( ... )
   cColorSt2Msg:= 'GR+/R,,,,B/W'                //    Stat_msg
   cColorWait  := 'W+/R*,,,,B/W'                 //    †¤¨β¥
 
-  public Err_version := '’¥αβ ‘ƒ ÿβ '
+  public Err_version := '’¥αβ ‘ƒ'
   public fio_polzovat := ''
+  public sdbf := '.dbf', sdbt := '.dbt', sntx := '.ntx'
+  public exe_dir := DICT_DIR
+  public cur_dir := WORK_DIR
 
-  
-  // R_Use('d:\_mo\chip\exe\_mo3k006', {'d:\_mo\chip\work\_mo3k006', 'd:\_mo\chip\work\_mo3k006_', 'd:\_mo\chip\work\_mo3k006AD'}, 'K006')
-  // R_Use('d:\_mo\chip\exe\_mo3k006', , 'K006')
-
-  mainDiag := 'i83.9'  // 'n82.9'
+  mainDiag := '' //'L10.4'  // 'n82.9'
   fedUslugi := {'A16.12.006.001', 'A16.12.008.003'} // {'A06.04.018'}
   aDiagAdd := {}
   aDiagOsl := {}
   aAdCrit := {'derm1', 'lgh3'}
   cFr := ''
 
-  defenitionKSG( ctod('01/08/2023'), 2, , , USL_OK_HOSPITAL, mainDiag, aDiagAdd, aDiagOsl, fedUslugi, aAdCrit, cFr )
+  aKSG := createTableKSG( ctod('01/08/2003'), 2, ctod('01/08/2022'), ctod('10/08/2022'), USL_OK_HOSPITAL, mainDiag, aDiagAdd, aDiagOsl, fedUslugi, aAdCrit, cFr )
+  if ! empty(aKSG)
+    setPriceTableKSG(aKSG, ctod('01/08/2022'), ctod('10/08/2022'))
+  endif
 
-  // k006->(dbCloseArea())
+  altd()
+
   return
 

@@ -1,5 +1,27 @@
 #include 'chip_mo.ch'
 #include 'function.ch'
+#include 'ksg_test.ch'
+
+Function create_name_alias(cVarAlias, in_date)
+  // cVarAlias - строка с начальными символами алиаса
+  // in_date - дата на которую необходимо сформировать алиас
+  local ret := cVarAlias, valYear
+
+  // проверим входные параметры
+  if valtype(in_date) == 'D'
+    valYear := year(in_date)
+  elseif valtype(in_date) == 'N' .and. in_date >= 2018 .and. in_date < WORK_YEAR
+    valYear := in_date
+  else
+    return ret
+  endif
+
+  if   ((valYear == WORK_YEAR) .or. (valYear < 2018))
+    return ret
+  endif
+
+    ret += substr(str(valYear, 4), 3)
+  return ret
 
 ////* 23.12.18 количество лет, месяцев и дней в строке
 Function count_ymd(_mdate, _sys_date, /*@*/y, /*@*/m, /*@*/d)
@@ -101,3 +123,87 @@ function prefixFileRefName(in_date)
   endif
 
   return '_mo' + substr(str(valYear, 4, 0), 4, 1)
+
+// 10.04.23
+Function use_base(sBase, lAlias, lExcluUse, lREADONLY)
+  Local fl := .t., sind1 := '', sind2 := ''
+  local fname, fname_add
+  local countYear
+
+  sBase := lower(sBase)
+  do case
+    case sBase == 'lusl'
+      for countYear := 2018 to WORK_YEAR
+        // if exists_file_TFOMS(countYear, 'usl')
+          fName := prefixFileRefName(countYear) + substr(sbase, 2)
+          lAlias := create_name_alias(sBase, countYear)          
+          if ! (lAlias)->(used())
+            sind1 := cur_dir + fName + sntx
+            if ! hb_vfExists(sind1)
+              R_Use(exe_dir + fName, , lAlias)
+              index on shifr to (sind1)
+            else
+              R_Use(exe_dir + fName, sind1, lAlias)
+            endif
+          endif
+        // endif
+      next
+    case sBase == 'luslc'
+      for countYear := 2018 to WORK_YEAR
+        // if exists_file_TFOMS(countYear, 'uslc')
+          fName := prefixFileRefName(countYear) + substr(sbase, 2)
+          fname_add := prefixFileRefName(countYear) + substr(sbase, 2, 3) + 'u'
+          lAlias := sBase + iif(countYear == WORK_YEAR, '', substr(str(countYear, 4), 3))
+          if ! (lAlias)->(used())
+            sind1 := cur_dir + fName + sntx
+            sind2 := cur_dir + fname_add + sntx
+            if ! (hb_vfExists(sind1) .or. hb_vfExists(sind2))
+              R_Use(exe_dir + fName, , lAlias)
+              index on shifr + str(vzros_reb, 1) + str(depart, 3) + dtos(datebeg) to (sind1) ;
+                for codemo == glob_mo[_MO_KOD_TFOMS]
+              index on codemo + shifr + str(vzros_reb, 1) + str(depart, 3) + dtos(datebeg) to (sind2) ;
+                for codemo == glob_mo[_MO_KOD_TFOMS] // для совместимости со старой версией справочника
+            else
+              R_Use(exe_dir + fName, {cur_dir + fName, cur_dir + fName_add}, lAlias)
+            endif
+          endif
+        // endif
+      next
+    case sBase == 'luslf'
+      for countYear := 2018 to WORK_YEAR
+        // if exists_file_TFOMS(countYear, 'uslf')
+          fName := prefixFileRefName(countYear) + substr(sbase, 2)
+          lAlias := sBase + iif(countYear == WORK_YEAR, '', substr(str(countYear, 4), 3))
+          if ! (lAlias)->(used())
+            sind1 := cur_dir + fName + sntx
+            if ! hb_vfExists(sind1)
+              R_Use(exe_dir + fName, , lAlias)
+              index on shifr to (sind1)
+            else
+              R_Use(exe_dir + fName, cur_dir + fName, lAlias)
+            endif
+          endif
+        // endif
+      next
+  endcase
+  return fl
+
+// 20.01.14 вернуть цену КСГ
+Function ret_cena_KSG(lshifr, lvr, ldate, ta)
+  Local fl_del := .f., fl_uslc := .f., v := 0
+
+  DEFAULT ta TO {}
+  v := fcena_oms_new(lshifr, ;
+                (lvr == 0), ;
+                ldate, ;
+                @fl_del, ;
+                @fl_uslc)
+  if fl_uslc  // если нашли в справочнике ТФОМС
+    if fl_del
+      aadd(ta, ' цена на услугу ' + rtrim(lshifr) + ' отсутствует в справочнике ТФОМС')
+    endif
+  else
+    aadd(ta, ' для Вашей МО в справочнике ТФОМС не найдена услуга: ' + lshifr)
+  endif
+  return v
+
